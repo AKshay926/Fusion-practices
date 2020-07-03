@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Fusion Practices Akshay</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <!-- Latest compiled and minified CSS -->
+      <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+
+      <!-- Optional theme -->
+      <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap-theme.min.css">
+
+      <style type="text/css">
+body {
+  padding-top: 40px;
+  padding-bottom: 40px;
+  background-color: #eee;
+}
+
+.form-details {
+  max-width: 330px;
+  padding: 15px;
+  margin: 0 auto;
+}
+.form-details .form-details-heading,
+.form-details .checkbox {
+  margin-bottom: 10px;
+}
+.form-details .checkbox {
+  font-weight: normal;
+}
+.form-details .form-control {
+  position: relative;
+  height: auto;
+  padding: 10px;
+  font-size: 16px;
+}
+.form-details .form-control:focus {
+  z-index: 2;
+}
+      </style>
+  </head>
+  <body>
+
+
+
+    <div class="container">
+
+      <form class="form-details" method="post">
+
+        <h2 class="form-details-heading">Details</h2>
+
+        <label for="inputEmail" class="sr-only">Email address</label>
+        <input type="email" id="inputEmail" class="form-control" 
+        placeholder="Email address" required autofocus>
+
+        <label for="inputCardNumber" class="sr-only">Card Number</label>
+        <input type="text" id="inputCardNumber" class="form-control" 
+        placeholder="Card Number" required>
+
+        <label for="inputCVV" class="sr-only">CVV</label>
+        <input type="text" id="inputCVV" class="form-control" 
+        placeholder="Security Code" required>
+
+        <div class="checkbox">
+          <label>
+            <input type="checkbox" value="agree"> Agree to Terms
+          </label>
+        </div>
+
+        <button class="btn btn-lg btn-primary btn-block" type="submit">Submit</button>
+      </form>
+
+    </div> <!-- /container -->
+
+  <script>
+
+    var begin;
+    var delta = 200;
+    var end;
+    var hasTyped = false;
+
+
+
+    var originalHeight = $(window).height();
+    var originalWidth = $(window).width();
+    var acutalHeight = $(window).height();
+    var actualWidth = $(window).width();
+    var rtime;
+    let uuid = uuidv4()
+    var req = {
+      url: window.location.href,
+      id: uuid,
+      resizeTo: {},
+      resizeFrom: {},
+    };
+    var timeout = false;
+
+    $(document).ready(function() {
+      $(window).resize(function() {
+        rtime = new Date();
+        if (timeout === false) {
+          timeout = true;
+          setTimeout(resizeend, delta);
+        }
+      });
+
+      $("input").on('paste', function() {
+        req.eventType = "copyAndPaste"
+        req.formId = this.id;
+        req.pasted = true;
+        sendData('copyandpaste');
+      })
+
+      $("input").on('copy', function() {
+        req.eventType = "copyAndPaste";
+        req.formId = this.id;
+        req.pasted = false;
+        sendData('copyandpaste');
+      })
+
+      typeInput();
+      submitData();
+    })
+
+    sendData('new');
+
+    // Set a timeout before actualizing screen size
+    function resizeend() {
+      if (new Date() - rtime < delta) {
+        setTimeout(resizeend, delta);
+      } else {
+        timeout = false;
+        screenResolution();
+      }
+    }
+
+
+    function screenResolution() {
+      req.eventType = "resize";
+      req.resizeFrom.height = originalHeight.toString();
+      req.resizeFrom.width = originalWidth.toString();
+      actualHeight = $(window).height();
+      actualWidth = $(window).width();
+      req.resizeTo.height = actualHeight.toString();
+      req.resizeTo.width = actualWidth.toString();
+      sendData('resize');
+      originalHeight = actualHeight;
+      originalWidth = actualWidth;
+    }
+
+    
+    function typeInput() {
+      $("input").keypress(function(event) {
+        if (!hasTyped) {
+          hasTyped = true;
+          begin = new Date();
+        }
+      });
+    }
+
+
+    function submitData() {
+      $("button").click(function(event) {
+        if (hasTyped) {
+          end = new Date();
+          interval = (end - begin) / 1000;
+          req.eventType = "timeTaken";
+          req.interval = interval;
+          hasTyped = false;
+          sendData('submit');
+        }
+      });
+    }
+
+    function sendData(route) {
+      $.ajax({
+        url: 'http://localhost:8080/' + route,
+        type: 'POST',
+        dataType: 'application/json',
+        data: JSON.stringify(
+                {
+                  "websiteURL": req.url,
+                  "sessionId": req.id.toString(),
+                  "eventType": (req.eventType) ? req.eventType : null,
+                  "paste": (req.eventType == 'copyAndPaste') ? req.pasted : null,
+                  "formId": (req.eventType == 'copyAndPaste') ? req.formId : null,
+                  "resizeFrom": (req.eventType == 'resize') ? {
+                    "height": req.resizeFrom.height,
+                    "width": req.resizeFrom.width
+                  } : null,
+                  "resizeTo": (req.eventType == 'resize') ? {
+                    "height": req.resizeTo.height,
+                    "width": req.resizeTo.width,
+                  } : null,
+                  "time": (req.eventType == 'timeTaken') ? req.interval : null
+                }
+        )
+      })
+              .done(function() {
+                console.log("success");
+              })
+              .fail(function() {
+                console.log("error");
+              })
+              .always(function() {
+                console.log("complete");
+              });
+    }
+  </script>
+
+  </body>
+</html>
